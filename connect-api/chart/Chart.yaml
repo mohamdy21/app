@@ -4,7 +4,7 @@ name: connect-api
 description: A Helm chart for Kubernetes deployment
 type: application
 version: 0.1.0
-home: https://gitlab.com/ftg2021/finx-connect-v2/connect-api.git
+home: https://github.com/mohamdy21/test.git
 dependencies:
   - name: service
     version: 1.18.5
