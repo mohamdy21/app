@@ -1,0 +1,11 @@
+apiVersion: v2
+appVersion: "1.0"
+name: connect-api
+description: A Helm chart for Kubernetes deployment
+type: application
+version: 0.1.0
+home: https://gitlab.com/ftg2021/finx-connect-v2/connect-api.git
+dependencies:
+  - name: service
+    version: 1.18.5
+    repository: https://gitlab.com/api/v4/projects/35915648/packages/helm/stable

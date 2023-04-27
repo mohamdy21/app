@@ -1,0 +1,428 @@
+nameOverride: "new-test"
+fullnameOverride: "connect-api-test"
+
+service:
+  replicas: 1
+  image:
+    tag: d16bdd23-php-fpm
+    repository: 801759287412.dkr.ecr.me-south-1.amazonaws.com/connect/connect-api
+    pullPolicy: Always
+
+  containerPort: 3000
+  service:
+    type: ClusterIP
+    port: 3000
+
+  revisionHistoryLimit: 10
+  rollingUpdate:
+    maxUnavailable: 25%
+    maxSurge: 25%
+  annotations:
+      ad.datadoghq.com/connect-api.logs: >-
+            [{
+              "source": "connect-api",
+              "service": "connect-api",
+              "log_processing_rules": [
+                {
+                  "type": "exclude_at_match",
+                  "name": "exclude_healthcheck_logs",
+                  "pattern": "health"
+                }
+              ]
+            }]
+
+  ingress:
+    enabled: false
+
+  environment:
+    - name: APP_NAME
+      value: "Connect-API"
+    - name: APP_ENV
+      value: "development"
+    - name: APP_KEY
+      valueFrom:
+        secretKeyRef:
+          name: connect-api-secret
+          key: APP_KEY
+    - name: APP_DEBUG
+      value: "true"
+    - name: APP_BASE_PATH
+      value: "/var/www/app"
+    - name: APP_URL
+      value: "https://connect.thefinxdev.io"
+    - name: APP_PER_PAGE
+      value: "50"
+    - name: CONNECT_WIDGET_URL
+      value: "https://connect.thefinxdev.io/cw"
+
+    - name: TELESCOPE_ENABLED
+      value: "false"
+
+    - name: CACHE_DRIVER
+      value: "redis"
+    - name: FILESYSTEM_DISK
+      value: "local"
+    - name: QUEUE_CONNECTION
+      value: "sync"
+
+    - name: LOG_CHANNEL
+      value: "stdout"
+    - name: LOG_DEPRECATIONS_CHANNEL
+      value: "null"
+    - name: LOG_LEVEL
+      value: "debug"
+
+    - name: DB_CONNECTION
+      value: "pgsql"
+    - name: DB_HOST
+      valueFrom:
+        secretKeyRef:
+          name: connect-api-secret
+          key: DB_HOST
+    - name: DB_PORT
+      valueFrom:
+        secretKeyRef:
+          name: connect-api-secret
+          key: DB_PORT
+    - name: DB_DATABASE
+      valueFrom:
+        secretKeyRef:
+          name: connect-api-secret
+          key: DB_DATABASE
+    - name: DB_USERNAME
+      valueFrom:
+        secretKeyRef:
+          name: connect-api-secret
+          key: DB_USERNAME
+    - name: DB_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: connect-api-secret
+          key: DB_PASSWORD
+
+    - name: REDIS_HOST
+      valueFrom:
+        secretKeyRef:
+          name: connect-api-secret
+          key: REDIS_HOST
+    - name: REDIS_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: connect-api-secret
+          key: REDIS_PASSWORD
+    - name: REDIS_PORT
+      valueFrom:
+        secretKeyRef:
+          name: connect-api-secret
+          key: REDIS_PORT
+    - name: REDIS_DB
+      value: "0"
+    - name: REDIS_CACHE_DB
+      value: "1"
+
+    - name: BIFROST_API_URI
+      value: "http://bifrost-api.connect.svc.cluster.local:3000"
+
+    - name: TEMPORAL_HOST
+      valueFrom:
+        secretKeyRef:
+          name: connect-api-secret
+          key: TEMPORAL_HOST
+    - name: TEMPORAL_ACTIVITIES_NUM_WORKERS
+      value: "5"
+    - name: TEMPORAL_ACTIVITIES_NUM_WORKERS_SYNC
+      value: "5"
+
+    - name: POSTMAN_WORKSPACE_ID
+      value: "e434133c-9b0f-4856-8d6a-360bb3bf30d4"
+    - name: POSTMAN_X_API_KEY
+      value: "PMAK-63ff3596697f505ef69c9bcd-9fe47cafc875b9b8da7a30575ffab45f61"
+
+    - name: FIXER_IO_API_KEY
+      valueFrom:
+        secretKeyRef:
+          name: connect-api-secret
+          key: FIXER_IO_API_KEY
+
+    - name: AUTH0_DOMAIN
+      value: "https://connect-dev.eu.auth0.com"
+    - name: AUTH0_CLIENT_ID
+      valueFrom:
+        secretKeyRef:
+          name: connect-api-secret
+          key: AUTH0_CLIENT_ID
+    - name: AUTH0_CLIENT_SECRET
+      valueFrom:
+        secretKeyRef:
+          name: connect-api-secret
+          key: AUTH0_CLIENT_SECRET
+    - name: AUTH0_AUDIENCE
+      value: "https://connect.thefinxdev.io/api/v1/"
+    - name: AUTH0_AUDIENCE_DP
+      value: "https://connect.thefinxdev.io/api/dp/v1/"
+    - name: AUTH0_AUDIENCE_CW
+      value: "https://connect.thefinxdev.io/api/cw/v1/"
+
+    - name: DD_ENV
+      value: "DEV"
+    - name: DD_SERVICE
+      value: "connect-api"
+    - name: DD_LOGS_INJECTION
+      value: "true"
+
+
+  # Getting secret values from Vault
+  externalSecret:
+    enabled: true
+    backendType: vault
+    vaultMountPoint: kubernetes-finx-dev-main-cluster
+    vaultRole: external-secrets
+    vaultPath: secret/data/connect/dev/connect-api
+    name: connect-api-secret
+    dataFrom:
+      - secret/data/connect/dev/connect-api
+
+
+  resources:
+    limits:
+      memory: 350Mi
+    requests:
+      cpu: 150m
+      memory: 200Mi
+
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: 3000
+      scheme: HTTP
+    initialDelaySeconds: 15
+    timeoutSeconds: 2
+    periodSeconds: 15
+    successThreshold: 1
+    failureThreshold: 5
+
+  livenessProbe:
+    tcpSocket:
+      port: 3000
+    initialDelaySeconds: 15
+    timeoutSeconds: 2
+    periodSeconds: 15
+    successThreshold: 1
+    failureThreshold: 5
+
+  startupProbe:
+    tcpSocket:
+      port: 3000
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 2
+    failureThreshold: 30
+
+  horizontalPodAutoscaler:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 3
+    metrics:
+      - type: Resource
+        resource:
+          name: cpu
+          target:
+            type: Utilization
+            averageUtilization: 60
+
+  verticalPodAutoscaler:
+    enabled: false
+
+
+####### Cronjob ######
+image:
+  repository: 801759287412.dkr.ecr.me-south-1.amazonaws.com/connect/connect-api
+  imagePullPolicy: IfNotPresent
+  tag: cli
+
+
+jobs_run_settings:
+    failedJobsHistoryLimit: 1
+    successfulJobsHistoryLimit: 1
+    concurrencyPolicy: Forbid
+    restartPolicy: Never
+
+environment:
+    - name: APP_NAME
+      value: "Connect-API"
+    - name: APP_ENV
+      value: "development"
+    - name: APP_KEY
+      valueFrom:
+        secretKeyRef:
+          name: connect-api-secret
+          key: APP_KEY
+    - name: APP_DEBUG
+      value: "true"
+    - name: APP_BASE_PATH
+      value: "/var/www/app"
+    - name: APP_URL
+      value: "https://connect.thefinxdev.io"
+    - name: APP_PER_PAGE
+      value: "50"
+    - name: CONNECT_WIDGET_URL
+      value: "https://connect.thefinxdev.io/cw"
+
+    - name: TELESCOPE_ENABLED
+      value: "false"
+
+    - name: CACHE_DRIVER
+      value: "redis"
+    - name: FILESYSTEM_DISK
+      value: "local"
+    - name: QUEUE_CONNECTION
+      value: "sync"
+
+    - name: LOG_CHANNEL
+      value: "stdout"
+    - name: LOG_DEPRECATIONS_CHANNEL
+      value: "null"
+    - name: LOG_LEVEL
+      value: "debug"
+
+    - name: DB_CONNECTION
+      value: "pgsql"
+    - name: DB_HOST
+      valueFrom:
+        secretKeyRef:
+          name: connect-api-secret
+          key: DB_HOST
+    - name: DB_PORT
+      valueFrom:
+        secretKeyRef:
+          name: connect-api-secret
+          key: DB_PORT
+    - name: DB_DATABASE
+      valueFrom:
+        secretKeyRef:
+          name: connect-api-secret
+          key: DB_DATABASE
+    - name: DB_USERNAME
+      valueFrom:
+        secretKeyRef:
+          name: connect-api-secret
+          key: DB_USERNAME
+    - name: DB_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: connect-api-secret
+          key: DB_PASSWORD
+
+    - name: REDIS_HOST
+      valueFrom:
+        secretKeyRef:
+          name: connect-api-secret
+          key: REDIS_HOST
+    - name: REDIS_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: connect-api-secret
+          key: REDIS_PASSWORD
+    - name: REDIS_PORT
+      valueFrom:
+        secretKeyRef:
+          name: connect-api-secret
+          key: REDIS_PORT
+    - name: REDIS_DB
+      value: "0"
+    - name: REDIS_CACHE_DB
+      value: "1"
+
+    - name: BIFROST_API_URI
+      value: "http://bifrost-api.connect.svc.cluster.local:3000"
+
+    - name: TEMPORAL_HOST
+      valueFrom:
+        secretKeyRef:
+          name: connect-api-secret
+          key: TEMPORAL_HOST
+    - name: TEMPORAL_ACTIVITIES_NUM_WORKERS
+      value: "5"
+    - name: TEMPORAL_ACTIVITIES_NUM_WORKERS_SYNC
+      value: "5"
+
+    - name: POSTMAN_WORKSPACE_ID
+      value: "e434133c-9b0f-4856-8d6a-360bb3bf30d4"
+    - name: POSTMAN_X_API_KEY
+      value: "PMAK-63ff3596697f505ef69c9bcd-9fe47cafc875b9b8da7a30575ffab45f61"
+
+    - name: FIXER_IO_API_KEY
+      valueFrom:
+        secretKeyRef:
+          name: connect-api-secret
+          key: FIXER_IO_API_KEY
+
+    - name: AUTH0_DOMAIN
+      value: "https://connect-dev.eu.auth0.com"
+    - name: AUTH0_CLIENT_ID
+      valueFrom:
+        secretKeyRef:
+          name: connect-api-secret
+          key: AUTH0_CLIENT_ID
+    - name: AUTH0_CLIENT_SECRET
+      valueFrom:
+        secretKeyRef:
+          name: connect-api-secret
+          key: AUTH0_CLIENT_SECRET
+    - name: AUTH0_AUDIENCE
+      value: "https://connect.thefinxdev.io/api/v1/"
+    - name: AUTH0_AUDIENCE_DP
+      value: "https://connect.thefinxdev.io/api/dp/v1/"
+    - name: AUTH0_AUDIENCE_CW
+      value: "https://connect.thefinxdev.io/api/cw/v1/"
+
+    - name: DD_ENV
+      value: "DEV"
+    - name: DD_SERVICE
+      value: "connect-api"
+    - name: DD_LOGS_INJECTION
+      value: "true"
+
+jobs:
+
+  - name: currencies-sync
+    schedule: "0 0 */2 * *"
+    command:
+      - /bin/sh
+      - -c
+      - php /var/www/app/artisan currencies:sync
+
+  - name: currency-rates-sync
+    schedule: "1 0 * * *"
+    command:
+      - /bin/sh
+      - -c
+      - php /var/www/app/artisan currency-rates:sync
+
+  - name: consents-revoke-expired
+    schedule: "0 0 * * *"
+    command:
+      - /bin/sh
+      - -c
+      - php /var/www/app/artisan consents:revoke-expired
+
+  - name: institution-sync
+    schedule: "0 */2 * * *"
+    command:
+      - /bin/sh
+      - -c
+      - php /var/www/app/artisan institution:sync
+
+  - name: team-member-update-invited-at
+    schedule: "*/5 * * * *"
+    command:
+      - /bin/sh
+      - -c
+      - php /var/www/app/artisan team-member:update-invited-at
+
+  - name: team-member-remove-invited
+    schedule: "0 * * * *"
+    command:
+      - /bin/sh
+      - -c
+      - php /var/www/app/artisan team-member:remove-invited

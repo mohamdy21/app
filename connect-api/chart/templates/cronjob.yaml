@@ -1,0 +1,43 @@
+{{- $root := .}}
+{{- $chart_name := .Chart.Name }}
+{{- $chart_version := .Chart.Version | replace "+" "_" }}
+{{- $release_name := .Release.Name }}
+{{- $jobs_run_settings := .Values.jobs_run_settings }}
+{{- $env := .Values.environment }}
+{{- $job := .Values.jobs }}
+{{- range $job := .Values.jobs }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: "{{ $release_name }}-{{ $job.name }}"
+  labels:
+    chart: "{{ $chart_name }}-{{ $chart_version }}"
+spec:
+  concurrencyPolicy: {{ $jobs_run_settings.concurrencyPolicy }}
+  failedJobsHistoryLimit: {{ $jobs_run_settings.failedJobsHistoryLimit }}
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: {{ $release_name }}
+            cron: {{ $job.name }}
+        spec:
+          containers:
+          - image: "{{ $root.Values.image.repository }}:{{$root.Values.image.tag }}"
+            imagePullPolicy: {{ $root.Values.image.imagePullPolicy }}
+            name: {{ $job.name }}
+            env:
+              {{- toYaml $env | nindent 12 }}
+            command:
+              {{- toYaml $job.command | nindent 12 }}
+            resources:
+              requests:
+                memory: "1Gi"
+              limits:
+                memory: "1Gi"
+          restartPolicy: {{ $jobs_run_settings.restartPolicy }}
+  schedule: {{ $job.schedule | quote }}
+  successfulJobsHistoryLimit: {{ $jobs_run_settings.successfulJobsHistoryLimit }}
+{{- end }}
