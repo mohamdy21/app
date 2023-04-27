@@ -1,7 +1,7 @@
-fullnameOverride: "connect-api-test"
 
 service:
   replicas: 1
+  fullnameOverride: "connect-api-test"
   image:
     tag: d16bdd23-php-fpm
     repository: 801759287412.dkr.ecr.me-south-1.amazonaws.com/connect/connect-api
