@@ -1,4 +1,3 @@
-nameOverride: "new-test"
 fullnameOverride: "connect-api-test"
 
 service:
